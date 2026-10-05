@@ -1,5 +1,5 @@
 // SwitchBot Open API v1.1 の型定義
-// https://github.com/OpenWonderLabs/SwitchBotAPI
+// https://github.com/OpenWonderLabs/SwitchBotAPI (各デバイスの詳細は devices/ 配下)
 
 export type SwitchBotResponse<T> = {
   /** 100 = 成功。それ以外はエラー */
@@ -38,10 +38,22 @@ export type DeviceStatus = {
   deviceId: string;
   deviceType: string;
   hubDeviceId: string;
-  power?: "on" | "off";
+  /** 多くのデバイスでは "on"/"off" (大文字の場合あり)。Relay Switch 1PM 等では消費電力 (W) */
+  power?: string | number;
+  /** Relay Switch の電源状態 (0: off, 1: on) */
+  switchStatus?: number;
   temperature?: number;
   humidity?: number;
+  CO2?: number;
   battery?: number;
+  brightness?: number | string;
+  slidePosition?: number | string;
+  moving?: boolean;
+  lockState?: string;
+  doorState?: string;
+  openState?: string;
+  moveDetected?: boolean;
+  deviceMode?: string;
   version?: string;
   [key: string]: unknown;
 };
@@ -52,3 +64,10 @@ export type DeviceCommand = {
   /** 通常は "command"。赤外線リモコンのカスタムボタンは "customize" */
   commandType?: "command" | "customize";
 };
+
+/** SwitchBotClient とモックで共通のインターフェース */
+export interface SwitchBotApi {
+  getDevices(): Promise<DeviceList>;
+  getDeviceStatus(deviceId: string): Promise<DeviceStatus>;
+  sendCommand(deviceId: string, command: DeviceCommand): Promise<unknown>;
+}
