@@ -4,6 +4,10 @@
 FROM node:24-bookworm-slim AS base
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
+# Prisma (マイグレーション用のエンジン) が OpenSSL を参照するため
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/*
 
 # ---- 依存パッケージのインストール ----
 FROM base AS deps
