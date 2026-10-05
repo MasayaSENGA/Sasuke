@@ -20,6 +20,8 @@ RUN npm ci
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# public/ が空だと Git に含まれずクローン先に存在しないため、無ければ作る
+RUN mkdir -p public
 # Prisma クライアント (src/generated) はリポジトリに含めないので、ここで生成する
 RUN npx prisma generate
 # ビルド中にも認証設定が読み込まれるため、ダミー値を渡す (実行時は .env.production の値を使う)
