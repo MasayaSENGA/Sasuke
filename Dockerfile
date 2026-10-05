@@ -13,13 +13,15 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json prisma.config.ts ./
 COPY prisma ./prisma
-# postinstall で prisma generate が走る
+# postinstall の prisma generate 用に schema もコピーしておく
 RUN npm ci
 
 # ---- ビルド ----
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Prisma クライアント (src/generated) はリポジトリに含めないので、ここで生成する
+RUN npx prisma generate
 # ビルド中にも認証設定が読み込まれるため、ダミー値を渡す (実行時は .env.production の値を使う)
 RUN BETTER_AUTH_SECRET=build-time-placeholder BETTER_AUTH_URL=http://localhost:3000 npm run build
 

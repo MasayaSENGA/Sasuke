@@ -19,6 +19,20 @@ Lightsail のインスタンス (Ubuntu) 上で Docker Compose を使って動�
   - 例: `home.example.com`。DuckDNS などの無料ダイナミック DNS でも可
 - このリポジトリをサーバーから `git clone` できること (非公開リポジトリならデプロイキーを登録する)
 
+## 0. (任意) 手元で本番構成を試す
+
+Docker Desktop があれば、Lightsail に上げる前に同じ構成を手元で確認できる。`DOMAIN="localhost"` にすると Caddy が自己署名証明書で HTTPS を提供する (ブラウザの警告は許可して進む)。
+
+```bash
+cp .env.production.example .env.production
+# DOMAIN="localhost"、BETTER_AUTH_URL="https://localhost"、ALLOW_SIGNUP="true" にし、シークレット 2 つを生成して記入
+docker compose -p sasuke-local up -d --build
+open https://localhost
+# 終わったら片付け (-v で DB も削除)
+docker compose -p sasuke-local down -v
+rm .env.production
+```
+
 ## 1. インスタンスの作成
 
 1. Lightsail コンソール → インスタンスの作成
