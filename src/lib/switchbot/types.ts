@@ -65,9 +65,34 @@ export type DeviceCommand = {
   commandType?: "command" | "customize";
 };
 
+/** SwitchBot アプリで作成した手動実行シーン */
+export type Scene = {
+  sceneId: string;
+  sceneName: string;
+};
+
+/** Webhook で届くイベント (eventType: "changeReport") */
+export type WebhookEvent = {
+  eventType: string;
+  eventVersion?: string;
+  context?: {
+    deviceType?: string;
+    /** 物理デバイスの MAC アドレス (= deviceId) */
+    deviceMac?: string;
+    timeOfSample?: number;
+    [key: string]: unknown;
+  };
+};
+
 /** SwitchBotClient とモックで共通のインターフェース */
 export interface SwitchBotApi {
   getDevices(): Promise<DeviceList>;
   getDeviceStatus(deviceId: string): Promise<DeviceStatus>;
   sendCommand(deviceId: string, command: DeviceCommand): Promise<unknown>;
+  getScenes(): Promise<Scene[]>;
+  executeScene(sceneId: string): Promise<unknown>;
+  /** 登録済みの Webhook URL 一覧 */
+  getWebhookUrls(): Promise<string[]>;
+  setupWebhook(url: string): Promise<unknown>;
+  deleteWebhook(url: string): Promise<unknown>;
 }

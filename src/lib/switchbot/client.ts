@@ -4,6 +4,7 @@ import type {
   DeviceCommand,
   DeviceList,
   DeviceStatus,
+  Scene,
   SwitchBotApi,
   SwitchBotResponse,
 } from "./types";
@@ -110,4 +111,43 @@ export class SwitchBotClient implements SwitchBotApi {
       }),
     });
   }
+
+  getScenes(): Promise<Scene[]> {
+    return this.request<Scene[]>("/scenes");
+  }
+
+  executeScene(sceneId: string): Promise<unknown> {
+    return this.request(`/scenes/${encodeURIComponent(sceneId)}/execute`, { method: "POST" });
+  }
+
+  async getWebhookUrls(): Promise<string[]> {
+    try {
+      const body = await this.request<{ urls?: string[] }>("/webhook/queryWebhook", {
+        method: "POST",
+        body: JSON.stringify({ action: "queryUrl" }),
+      });
+      return body.urls ?? [];
+    } catch (error) {
+      // 未設定の場合はエラーが返るので、空として扱う (認証エラーは呼び出し元へ)
+      if (error instanceof SwitchBotApiError && !error.isAuthError && error.statusCode !== 429) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  setupWebhook(url: string): Promise<unknown> {
+    return this.request("/webhook/setupWebhook", {
+      method: "POST",
+      body: JSON.stringify({ action: "setupWebhook", url, deviceList: "ALL" }),
+    });
+  }
+
+  deleteWebhook(url: string): Promise<unknown> {
+    return this.request("/webhook/deleteWebhook", {
+      method: "POST",
+      body: JSON.stringify({ action: "deleteWebhook", url }),
+    });
+  }
+
 }

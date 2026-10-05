@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { getPowerState, type DashboardDevice, type DeviceKind } from "@/lib/switchbot/devices";
 import type { DeviceStatus } from "@/lib/switchbot/types";
@@ -61,8 +62,15 @@ export function DeviceTile({ device, onUpdate }: TileProps) {
 
       {error && <p className="text-xs text-red-600">{error}</p>}
 
-      {typeof device.status?.battery === "number" && (
-        <footer className="mt-auto text-xs text-zinc-500">🔋 {device.status.battery}%</footer>
+      {(typeof device.status?.battery === "number" || device.kind === "climate") && (
+        <footer className="mt-auto flex items-center justify-between text-xs text-zinc-500">
+          <span>{typeof device.status?.battery === "number" && `🔋 ${device.status.battery}%`}</span>
+          {device.kind === "climate" && (
+            <Link href={`/history?device=${encodeURIComponent(device.id)}`} className="hover:underline">
+              履歴を見る →
+            </Link>
+          )}
+        </footer>
       )}
     </article>
   );

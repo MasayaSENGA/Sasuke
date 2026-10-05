@@ -4,9 +4,15 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import { SwitchBotApiError, SwitchBotClient } from "@/lib/switchbot/client";
-import { deleteCredentials, saveCredentials } from "@/lib/switchbot/credentials";
+import {
+  deleteCredentials,
+  getSwitchBotClient,
+  saveCredentials,
+} from "@/lib/switchbot/credentials";
+import { disableWebhook, enableWebhook, isWebhookEnabled } from "@/lib/switchbot/webhook";
 
 export type CredentialFormState = { error?: string } | null;
+export type WebhookFormState = { error?: string; foreignUrls?: string[] } | null;
 
 // HTTP ヘッダーに載せるため、表示可能な ASCII 文字のみ許可する。
 // (コピー時に全角文字やゼロ幅スペースが混ざると fetch が例外を投げるため、先に弾く)
@@ -59,12 +65,55 @@ export async function saveCredentialsAction(
     return { error: "SwitchBot API に接続できませんでした。ネットワーク接続を確認してください" };
   }
 
+  await disableWebhookQuietly(userId);
   await saveCredentials(userId, token, secret);
   redirect("/dashboard");
 }
 
 export async function deleteCredentialsAction() {
   const userId = await requireUserId();
+  await disableWebhookQuietly(userId);
   await deleteCredentials(userId);
+  redirect("/settings");
+}
+
+/** 認証情報の変更・削除前に、登録済みの Webhook を解除する (失敗しても続行) */
+async function disableWebhookQuietly(userId: string) {
+  if (!(await isWebhookEnabled(userId))) return;
+  try {
+    await disableWebhook(userId, await getSwitchBotClient(userId));
+  } catch (error) {
+    console.error("Webhook の解除に失敗しました", error);
+  }
+}
+
+export async function enableWebhookAction(
+  _prev: WebhookFormState,
+  formData: FormData,
+): Promise<WebhookFormState> {
+  const userId = await requireUserId();
+  const client = await getSwitchBotClient(userId);
+  if (!client) return { error: "先に SwitchBot のトークンを登録してください" };
+
+  try {
+    const result = await enableWebhook(userId, client, {
+      replaceForeign: formData.get("replaceForeign") === "on",
+    });
+    if (!result.ok) return { error: result.error, foreignUrls: result.foreignUrls };
+  } catch (error) {
+    if (error instanceof SwitchBotApiError) return { error: error.message };
+    console.error("Webhook の登録に失敗しました", error);
+    return { error: "Webhook を登録できませんでした" };
+  }
+  redirect("/settings");
+}
+
+export async function disableWebhookAction() {
+  const userId = await requireUserId();
+  try {
+    await disableWebhook(userId, await getSwitchBotClient(userId));
+  } catch (error) {
+    console.error("Webhook の解除に失敗しました", error);
+  }
   redirect("/settings");
 }

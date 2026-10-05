@@ -4,7 +4,9 @@ import { getSession } from "@/lib/auth";
 import { SwitchBotApiError } from "@/lib/switchbot/client";
 import { getSwitchBotClient } from "@/lib/switchbot/credentials";
 import type { DashboardDevice } from "@/lib/switchbot/devices";
-import { loadDashboard } from "@/lib/switchbot/service";
+import { getScenes, loadDashboard } from "@/lib/switchbot/service";
+import type { Scene } from "@/lib/switchbot/types";
+import { isWebhookEnabled } from "@/lib/switchbot/webhook";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -29,13 +31,25 @@ export default async function DashboardPage() {
   }
 
   // 初回表示はサーバーで取得して、読み込み中の空白をなくす
-  let devices: DashboardDevice[] = [];
-  let error: string | null = null;
-  try {
-    devices = await loadDashboard(session.user.id, client);
-  } catch (e) {
-    error = e instanceof SwitchBotApiError ? e.message : "デバイスを取得できませんでした";
-  }
+  const [devicesResult, scenesResult, realtime] = await Promise.all([
+    loadDashboard(session.user.id, client).then(
+      (devices) => ({ devices, error: null }),
+      (e: unknown) => ({
+        devices: [] as DashboardDevice[],
+        error: e instanceof SwitchBotApiError ? e.message : "デバイスを取得できませんでした",
+      }),
+    ),
+    // シーンが取れなくてもデバイスは表示する
+    getScenes(session.user.id, client).catch((): Scene[] => []),
+    isWebhookEnabled(session.user.id),
+  ]);
 
-  return <DeviceDashboard initialDevices={devices} initialError={error} />;
+  return (
+    <DeviceDashboard
+      initialDevices={devicesResult.devices}
+      initialError={devicesResult.error}
+      scenes={scenesResult}
+      realtime={realtime}
+    />
+  );
 }

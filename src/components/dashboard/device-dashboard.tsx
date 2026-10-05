@@ -3,14 +3,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { saveLayoutAction } from "@/app/(app)/dashboard/actions";
 import type { DashboardDevice, DeviceKind } from "@/lib/switchbot/devices";
+import type { DeviceStatus, Scene } from "@/lib/switchbot/types";
 import { DeviceTile } from "./device-tile";
 import { EditableTile } from "./editable-tile";
+import { SceneBar } from "./scene-bar";
 
 /**
  * 自動更新の間隔。SwitchBot API は 1 日 10,000 回までで、1 回の更新でステータス対応デバイスの数だけ API を呼ぶ。
  * 例: 10 台 × 2 分間隔 × 24 時間 = 7,200 回 / 日 (タブが表示されている間だけ更新する)
  */
 const POLL_INTERVAL_MS = 2 * 60 * 1000;
+/** Webhook 有効時は変化がリアルタイムに届くので、定期取得は取りこぼし対策として間隔を空ける */
+const REALTIME_POLL_INTERVAL_MS = 10 * 60 * 1000;
 
 const SECTIONS: { title: string; kinds: DeviceKind[] }[] = [
   { title: "室内環境", kinds: ["climate"] },
@@ -25,9 +29,14 @@ const sectionOf = (device: DashboardDevice) =>
 export function DeviceDashboard({
   initialDevices,
   initialError,
+  scenes,
+  realtime,
 }: {
   initialDevices: DashboardDevice[];
   initialError: string | null;
+  scenes: Scene[];
+  /** Webhook によるリアルタイム更新が有効か */
+  realtime: boolean;
 }) {
   const [devices, setDevices] = useState(initialDevices);
   const [error, setError] = useState(initialError);
@@ -36,6 +45,7 @@ export function DeviceDashboard({
   /** 並び替え・表示設定モード中の編集内容 (null なら通常表示) */
   const [draft, setDraft] = useState<DashboardDevice[] | null>(null);
   const [saving, setSaving] = useState(false);
+  const [connected, setConnected] = useState(false);
 
   const editing = draft !== null;
 
@@ -61,9 +71,12 @@ export function DeviceDashboard({
   // タブが表示されている間だけ定期更新。非表示から戻ったときにも更新する。編集中は止める
   useEffect(() => {
     if (editing) return;
-    const timer = setInterval(() => {
-      if (document.visibilityState === "visible") void refresh(false);
-    }, POLL_INTERVAL_MS);
+    const timer = setInterval(
+      () => {
+        if (document.visibilityState === "visible") void refresh(false);
+      },
+      realtime ? REALTIME_POLL_INTERVAL_MS : POLL_INTERVAL_MS,
+    );
     const onVisible = () => {
       if (document.visibilityState === "visible") void refresh(false);
     };
@@ -72,7 +85,28 @@ export function DeviceDashboard({
       clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [refresh, editing]);
+  }, [refresh, editing, realtime]);
+
+  // Webhook で届いた状態変化をサーバーから受け取る (Server-Sent Events)
+  useEffect(() => {
+    if (!realtime) return;
+    const source = new EventSource("/api/events");
+    source.onopen = () => setConnected(true);
+    source.onerror = () => setConnected(false); // 自動で再接続される
+    source.addEventListener("device", (e) => {
+      const { deviceId, status } = JSON.parse((e as MessageEvent<string>).data) as {
+        deviceId: string;
+        status: Partial<DeviceStatus>;
+      };
+      setDevices((prev) =>
+        prev.map((d) =>
+          d.id === deviceId && d.status ? { ...d, status: { ...d.status, ...status } } : d,
+        ),
+      );
+      setUpdatedAt(new Date());
+    });
+    return () => source.close();
+  }, [realtime]);
 
   // 操作後の再取得結果を反映する (並び順・表示設定はこちらの状態を優先)
   const updateDevice = useCallback((updated: DashboardDevice) => {
@@ -131,7 +165,7 @@ export function DeviceDashboard({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">{editing ? "並び替え・表示設定" : "ダッシュボード"}</h1>
         {editing ? (
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 text-sm whitespace-nowrap">
             <button
               type="button"
               onClick={() => setDraft(null)}
@@ -150,9 +184,22 @@ export function DeviceDashboard({
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-2 text-sm text-zinc-500">
+          <div className="flex flex-wrap items-center gap-2 text-sm whitespace-nowrap text-zinc-500">
+            {realtime && (
+              <span
+                className="flex items-center gap-1.5"
+                title={connected ? "状態の変化がすぐ反映されます" : "再接続しています"}
+              >
+                <span
+                  aria-hidden
+                  className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-500" : "bg-zinc-400"}`}
+                />
+                {connected ? "リアルタイム" : "再接続中"}
+              </span>
+            )}
             <span className="mr-1">
-              最終更新 {updatedAt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}
+              <span className="hidden sm:inline">最終更新 </span>
+              {updatedAt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}
             </span>
             <button
               type="button"
@@ -185,6 +232,8 @@ export function DeviceDashboard({
           {error}
         </p>
       )}
+
+      {!editing && <SceneBar scenes={scenes} />}
 
       {!error && devices.length === 0 && (
         <p className="text-zinc-500">SwitchBot アカウントにデバイスが登録されていません。</p>

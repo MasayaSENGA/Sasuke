@@ -23,6 +23,7 @@ model User {
 
   switchBotCredential SwitchBotCredential?
   devicePreferences   DevicePreference[]
+  sensorReadings      SensorReading[]
 
   @@map("user")
 }
@@ -76,13 +77,16 @@ model Verification {
 
 // ユーザーごとの SwitchBot API 認証情報 (トークン/シークレットは AES-256-GCM で暗号化して保存)
 model SwitchBotCredential {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  encryptedToken  String
-  encryptedSecret String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  encryptedToken    String
+  encryptedSecret   String
+  /// Webhook URL に含める秘密文字列の SHA-256 (受信時にユーザーを特定する)。null なら Webhook 無効
+  webhookSecretHash String?   @unique
+  webhookEnabledAt  DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@map("switchbot_credential")
 }
@@ -100,4 +104,20 @@ model DevicePreference {
 
   @@unique([userId, deviceId])
   @@map("device_preference")
+}
+
+// 温湿度計の記録 (履歴グラフ用)
+model SensorReading {
+  id          Int      @id @default(autoincrement())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId    String
+  temperature Float?
+  humidity    Float?
+  co2         Int?
+  recordedAt  DateTime @default(now())
+
+  @@index([userId, deviceId, recordedAt])
+  @@index([recordedAt])
+  @@map("sensor_reading")
 }

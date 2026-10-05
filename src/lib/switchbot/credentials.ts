@@ -21,7 +21,8 @@ export async function saveCredentials(userId: string, token: string, secret: str
   await prisma.switchBotCredential.upsert({
     where: { userId },
     create: { userId, ...data },
-    update: data,
+    // 別の SwitchBot アカウントに切り替わる可能性があるので、Webhook は登録し直してもらう
+    update: { ...data, webhookSecretHash: null, webhookEnabledAt: null },
   });
   clearUserCache(userId);
 }

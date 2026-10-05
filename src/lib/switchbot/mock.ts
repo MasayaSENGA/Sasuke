@@ -1,5 +1,5 @@
 import "server-only";
-import type { DeviceCommand, DeviceList, DeviceStatus, SwitchBotApi } from "./types";
+import type { DeviceCommand, DeviceList, DeviceStatus, Scene, SwitchBotApi } from "./types";
 
 // 開発用のモック (SWITCHBOT_MOCK=true のとき使用)。
 // 実機や API 回数を気にせずダッシュボードの UI を確認するためのもの。
@@ -23,9 +23,20 @@ const DEVICE_LIST: DeviceList = {
   ],
 };
 
+const SCENES: Scene[] = [
+  { sceneId: "MOCK-SCENE-GOODNIGHT", sceneName: "おやすみ" },
+  { sceneId: "MOCK-SCENE-LEAVE", sceneName: "外出" },
+  { sceneId: "MOCK-SCENE-HOME", sceneName: "帰宅" },
+];
+
 type MockState = Record<string, Record<string, unknown>>;
 
-const globalForMock = globalThis as unknown as { switchBotMockState?: MockState };
+const globalForMock = globalThis as unknown as {
+  switchBotMockState?: MockState;
+  switchBotMockWebhooks?: Set<string>;
+};
+
+const webhooks: Set<string> = (globalForMock.switchBotMockWebhooks ??= new Set());
 
 const state: MockState = (globalForMock.switchBotMockState ??= {
   "MOCK-METER": { temperature: 24.3, humidity: 52, CO2: 820, battery: 100 },
@@ -49,6 +60,12 @@ export class MockSwitchBotClient implements SwitchBotApi {
 
   async getDeviceStatus(deviceId: string): Promise<DeviceStatus> {
     await delay(100);
+    // 温湿度が少しずつ変化するようにする (履歴グラフの確認用)
+    const s = state[deviceId];
+    if (s && typeof s.temperature === "number") {
+      s.temperature = Math.round((s.temperature + (Math.random() - 0.5) * 0.4) * 10) / 10;
+      s.humidity = Math.round(Number(s.humidity) + (Math.random() - 0.5) * 2);
+    }
     const device = DEVICE_LIST.deviceList.find((d) => d.deviceId === deviceId);
     return {
       deviceId,
@@ -81,6 +98,36 @@ export class MockSwitchBotClient implements SwitchBotApi {
         break;
     }
     if (deviceId === "MOCK-PLUG") s.weight = s.power === "on" ? 1200 : 0;
+    return {};
+  }
+
+  async getScenes(): Promise<Scene[]> {
+    await delay(100);
+    return SCENES;
+  }
+
+  async executeScene(sceneId: string): Promise<unknown> {
+    await delay(200);
+    if (sceneId === "MOCK-SCENE-GOODNIGHT") {
+      state["MOCK-LIGHT"].power = "off";
+      state["MOCK-CURTAIN"].slidePosition = 100;
+    }
+    return {};
+  }
+
+  async getWebhookUrls(): Promise<string[]> {
+    return [...webhooks];
+  }
+
+  async setupWebhook(url: string): Promise<unknown> {
+    webhooks.add(url);
+    // 開発時に curl で Webhook を試せるよう、登録した URL をログに出す (モック専用)
+    console.log(`[mock] Webhook URL を登録しました: ${url}`);
+    return {};
+  }
+
+  async deleteWebhook(url: string): Promise<unknown> {
+    webhooks.delete(url);
     return {};
   }
 }

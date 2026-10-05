@@ -3,6 +3,10 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* 履歴グラフの系列色 (温度 = オレンジ, 湿度 = 青, CO2 = アクア) */
+  --series-temperature: #eb6834;
+  --series-humidity: #2a78d6;
+  --series-co2: #1baf7a;
 }
 
 @theme inline {
@@ -16,6 +20,9 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --series-temperature: #d95926;
+    --series-humidity: #3987e5;
+    --series-co2: #199e70;
   }
 }
 

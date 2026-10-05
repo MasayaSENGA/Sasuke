@@ -38,6 +38,15 @@ export async function cached<T>(key: string, ttlMs: number, fetcher: () => Promi
   return promise;
 }
 
+/** キャッシュ済みの値に部分的な更新を反映する (未キャッシュなら何もしない)。更新後の値を返す */
+export function patch<T extends object>(key: string, partial: Partial<T>): T | undefined {
+  const entry = store.entries.get(key);
+  if (!entry) return undefined;
+  const value = { ...(entry.value as T), ...partial };
+  store.entries.set(key, { value, fetchedAt: Date.now() });
+  return value;
+}
+
 export function invalidate(key: string) {
   store.entries.delete(key);
 }
