@@ -12,7 +12,7 @@ SwitchBot API を使った家電ダッシュボード Web アプリ。
 | 認証 | Better Auth (メールアドレス + パスワード) |
 | DB | Prisma 7 + SQLite (`@prisma/adapter-better-sqlite3`) |
 | 外部 API | SwitchBot Open API v1.1 |
-| 運用想定 | Amazon Lightsail |
+| 運用 | Amazon Lightsail + Docker Compose + Caddy (HTTPS) |
 
 ## セットアップ
 
@@ -64,6 +64,13 @@ src/
   proxy.ts               未ログイン時のリダイレクト (Next.js 16 の旧 middleware)
 ```
 
+## デプロイ
+
+Amazon Lightsail への手順は [docs/deploy-lightsail.md](docs/deploy-lightsail.md) を参照。
+
+- 本番では新規アカウント作成が既定で無効。最初のアカウントを作るときだけ `ALLOW_SIGNUP=true` にする
+- `GET /api/health` で死活確認できる (DB 接続も確認)
+
 ## 開発用モックモード
 
 `SWITCHBOT_MOCK=true npm run dev` で起動すると、SwitchBot API を呼ばずに架空のデバイス (温湿度計・プラグ・照明・カーテン・ロック・エアコンなど) でダッシュボードを確認できる。本番ビルドでは常に無効。
@@ -90,6 +97,7 @@ src/
   - ダッシュボードの自動更新は 2 分間隔で、タブが表示されている間だけ
   - ステータス API を持たないデバイス (赤外線リモコン、ハブミニ等) は呼ばない
   - 目安: ステータス対応デバイス 10 台を 24 時間表示し続けて約 7,200 回 / 日
+- **並び順・非表示**: ユーザーごとに `device_preference` テーブルへ保存する。非表示のデバイスはステータスを取得しない。
 - **赤外線リモコン**: 状態を取得できないため、エアコンは最後に送った設定をブラウザ (localStorage) に保存して表示する。
 - **SwitchBot トークンの取得**: SwitchBot アプリ → プロフィール → 設定 → アプリバージョンを 10 回タップ → 開発者向けオプション。
 
@@ -100,5 +108,5 @@ src/
 - [x] ダッシュボードのタイル表示 (温湿度計・プラグ・カーテン・赤外線リモコンなど)
 - [x] タイルからのデバイス操作
 - [ ] Webhook によるリアルタイム更新 (公開 URL が必要なため本番環境構築後)
-- [ ] タイルの並び替え・表示/非表示
-- [ ] Lightsail へのデプロイ構成 (Docker / systemd、HTTPS)
+- [x] タイルの並び替え・表示/非表示
+- [x] Lightsail へのデプロイ構成 (Docker Compose、Caddy による HTTPS)

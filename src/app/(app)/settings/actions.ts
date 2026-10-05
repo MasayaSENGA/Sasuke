@@ -8,9 +8,23 @@ import { deleteCredentials, saveCredentials } from "@/lib/switchbot/credentials"
 
 export type CredentialFormState = { error?: string } | null;
 
+// HTTP ヘッダーに載せるため、表示可能な ASCII 文字のみ許可する。
+// (コピー時に全角文字やゼロ幅スペースが混ざると fetch が例外を投げるため、先に弾く)
+const PRINTABLE_ASCII = /^[\x21-\x7e]+$/;
+
 const credentialSchema = z.object({
-  token: z.string().trim().min(1, "トークンを入力してください").max(512),
-  secret: z.string().trim().min(1, "シークレットを入力してください").max(512),
+  token: z
+    .string()
+    .trim()
+    .min(1, "トークンを入力してください")
+    .max(512)
+    .regex(PRINTABLE_ASCII, "トークンに使えない文字 (全角文字や空白など) が含まれています。コピーし直してください"),
+  secret: z
+    .string()
+    .trim()
+    .min(1, "シークレットを入力してください")
+    .max(512)
+    .regex(PRINTABLE_ASCII, "シークレットに使えない文字 (全角文字や空白など) が含まれています。コピーし直してください"),
 });
 
 async function requireUserId() {
@@ -38,12 +52,11 @@ export async function saveCredentialsAction(
   try {
     await new SwitchBotClient(token, secret).getDevices();
   } catch (error) {
-    return {
-      error:
-        error instanceof SwitchBotApiError
-          ? error.message
-          : "SwitchBot API に接続できませんでした",
-    };
+    if (error instanceof SwitchBotApiError) {
+      return { error: error.message };
+    }
+    console.error("SwitchBot API への接続に失敗しました", error);
+    return { error: "SwitchBot API に接続できませんでした。ネットワーク接続を確認してください" };
   }
 
   await saveCredentials(userId, token, secret);

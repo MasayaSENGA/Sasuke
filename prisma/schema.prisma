@@ -22,6 +22,7 @@ model User {
   accounts      Account[]
 
   switchBotCredential SwitchBotCredential?
+  devicePreferences   DevicePreference[]
 
   @@map("user")
 }
@@ -84,4 +85,19 @@ model SwitchBotCredential {
   updatedAt       DateTime @updatedAt
 
   @@map("switchbot_credential")
+}
+
+// ダッシュボードのタイルの並び順・表示設定 (ユーザー × デバイスごと)
+model DevicePreference {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId  String
+  sortOrder Int      @default(0)
+  hidden    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, deviceId])
+  @@map("device_preference")
 }

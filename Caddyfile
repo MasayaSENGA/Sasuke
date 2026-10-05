@@ -1,0 +1,5 @@
+# DOMAIN は .env.production で設定する (例: home.example.com)
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:3000
+}

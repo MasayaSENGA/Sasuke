@@ -7,6 +7,7 @@ import {
   toDashboardRemote,
   type DashboardDevice,
 } from "./devices";
+import { getDevicePreferences } from "./preferences";
 import type { DeviceCommand, DeviceStatus, SwitchBotApi } from "./types";
 
 /** デバイス一覧はほぼ変わらないので長めにキャッシュ */
@@ -49,14 +50,33 @@ async function withStatus(
   }
 }
 
-/** ダッシュボード用に全デバイスとステータスを取得する */
+/**
+ * ダッシュボード用に全デバイスとステータスを取得する。
+ * ユーザーの並び順を反映し、非表示のデバイスはステータスを取得しない (API 回数の節約)。
+ */
 export async function loadDashboard(
   userId: string,
   client: SwitchBotApi,
   { force = false } = {},
 ): Promise<DashboardDevice[]> {
-  const devices = await getDeviceList(userId, client);
-  return Promise.all(devices.map((device) => withStatus(userId, client, device, force)));
+  const [devices, preferences] = await Promise.all([
+    getDeviceList(userId, client),
+    getDevicePreferences(userId),
+  ]);
+
+  // 並び順が未設定のデバイス (新しく追加したものなど) は末尾に API の順で並べる
+  const sorted = devices
+    .map((device, index) => {
+      const preference = preferences.get(device.id);
+      return {
+        device: { ...device, hidden: preference?.hidden ?? false },
+        order: preference?.sortOrder ?? preferences.size + index,
+      };
+    })
+    .sort((a, b) => a.order - b.order)
+    .map(({ device }) => device);
+
+  return Promise.all(sorted.map((device) => withStatus(userId, client, device, force)));
 }
 
 /** ユーザーのデバイス一覧から探す (ステータスは取得しない)。見つからなければ null */

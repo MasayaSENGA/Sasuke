@@ -1,0 +1,51 @@
+# Amazon Lightsail (Ubuntu) 上での本番構成
+#   migrate: 起動時に DB マイグレーションを適用して終了
+#   app:     Next.js アプリ (SQLite は sasuke-data ボリュームに保存)
+#   caddy:   リバースプロキシ。Let's Encrypt で HTTPS 証明書を自動取得・更新
+# 手順は docs/deploy-lightsail.md を参照
+
+services:
+  migrate:
+    build:
+      context: .
+      target: migrate
+    env_file: .env.production
+    environment:
+      DATABASE_URL: file:/data/sasuke.db
+    volumes:
+      - sasuke-data:/data
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runner
+    env_file: .env.production
+    environment:
+      DATABASE_URL: file:/data/sasuke.db
+    volumes:
+      - sasuke-data:/data
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    env_file: .env.production
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  sasuke-data:
+  caddy-data:
+  caddy-config:

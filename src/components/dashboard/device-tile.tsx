@@ -7,7 +7,7 @@ import { ActionButton } from "./action-button";
 import { AirConditionerControls } from "./air-conditioner-controls";
 import { useDeviceCommand, type SendCommand } from "./use-device-command";
 
-const ICONS: Record<DeviceKind, string> = {
+export const ICONS: Record<DeviceKind, string> = {
   climate: "🌡️",
   switch: "🔌",
   bot: "🤖",

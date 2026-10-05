@@ -7,7 +7,7 @@ import { signIn, signUp } from "@/lib/auth-client";
 
 type Mode = "login" | "signup";
 
-export function AuthForm({ mode }: { mode: Mode }) {
+export function AuthForm({ mode, allowSignup }: { mode: Mode; allowSignup: boolean }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -70,11 +70,11 @@ export function AuthForm({ mode }: { mode: Mode }) {
             <>
               アカウントをお持ちの方は <Link href="/login" className="underline">ログイン</Link>
             </>
-          ) : (
+          ) : allowSignup ? (
             <>
               初めての方は <Link href="/signup" className="underline">アカウント作成</Link>
             </>
-          )}
+          ) : null}
         </p>
       </form>
     </main>

@@ -27,6 +27,8 @@ export type DashboardDevice = {
   cloudEnabled: boolean;
   status: DeviceStatus | null;
   statusError?: string;
+  /** ダッシュボードで非表示にしているか (非表示のデバイスはステータスを取得しない) */
+  hidden: boolean;
 };
 
 const KIND_PATTERNS: [RegExp, DeviceKind][] = [
@@ -55,7 +57,12 @@ export function classifyInfraredRemote(remoteType: string): DeviceKind {
 
 /** ステータス取得 API を呼ぶ対象か (赤外線リモコン・クラウド無効・ステータス非対応は対象外) */
 export function needsStatus(device: DashboardDevice): boolean {
-  return !device.isInfrared && device.cloudEnabled && !NO_STATUS_PATTERN.test(device.type);
+  return (
+    !device.hidden &&
+    !device.isInfrared &&
+    device.cloudEnabled &&
+    !NO_STATUS_PATTERN.test(device.type)
+  );
 }
 
 export function toDashboardDevice(device: SwitchBotDevice): DashboardDevice {
@@ -67,6 +74,7 @@ export function toDashboardDevice(device: SwitchBotDevice): DashboardDevice {
     isInfrared: false,
     cloudEnabled: device.enableCloudService,
     status: null,
+    hidden: false,
   };
 }
 
@@ -79,6 +87,7 @@ export function toDashboardRemote(remote: InfraredRemote): DashboardDevice {
     isInfrared: true,
     cloudEnabled: true,
     status: null,
+    hidden: false,
   };
 }
 
