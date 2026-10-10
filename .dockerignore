@@ -7,6 +7,6 @@ node_modules
 *.db-journal
 src/generated
 Dockerfile
-compose.yaml
+compose*.yaml
 Caddyfile
 docs

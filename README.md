@@ -12,7 +12,7 @@ SwitchBot API を使った家電ダッシュボード Web アプリ。
 | 認証 | Better Auth (メールアドレス + パスワード) |
 | DB | Prisma 7 + SQLite (`@prisma/adapter-better-sqlite3`) |
 | 外部 API | SwitchBot Open API v1.1 |
-| 運用 | Amazon Lightsail + Docker Compose + Caddy (HTTPS) |
+| 運用 | Docker Compose。自宅 Windows + Cloudflare Tunnel、または Amazon Lightsail + Caddy (HTTPS) |
 
 ## セットアップ
 
@@ -77,7 +77,10 @@ src/
 
 ## デプロイ
 
-Amazon Lightsail への手順は [docs/deploy-lightsail.md](docs/deploy-lightsail.md) を参照。
+| 構成 | Compose ファイル | 手順 |
+| --- | --- | --- |
+| 自宅 Windows (Docker Desktop) + Cloudflare Tunnel | `compose.tunnel.yaml` | [docs/deploy-windows-tunnel.md](docs/deploy-windows-tunnel.md) |
+| Amazon Lightsail + Caddy | `compose.yaml` | [docs/deploy-lightsail.md](docs/deploy-lightsail.md) |
 
 - 本番では新規アカウント作成が既定で無効。最初のアカウントを作るときだけ `ALLOW_SIGNUP=true` にする
 - `GET /api/health` で死活確認できる (DB 接続も確認)
@@ -109,6 +112,7 @@ Amazon Lightsail への手順は [docs/deploy-lightsail.md](docs/deploy-lightsai
 ## 設計メモ
 
 - **SwitchBot の認証情報**: ユーザーごとに SwitchBot アプリで発行したトークン/シークレットを登録し、`ENCRYPTION_KEY` で暗号化して DB に保存する。API 呼び出しはすべてサーバー側で行い、ブラウザには渡さない。
+- **ログイン試行の回数制限**: Better Auth がアクセス元 IP ごとに制限する。IP は既定で `X-Forwarded-For` (Caddy が付与) から、Cloudflare Tunnel 構成では `TRUSTED_IP_HEADER=cf-connecting-ip` で `CF-Connecting-IP` から取る。
 - **API 制限**: SwitchBot API は 1 日 10,000 回まで。対策として以下を行っている。
   - デバイス一覧は 10 分、ステータスは 60 秒サーバー側でキャッシュ (手動更新時も 10 秒以内は再取得しない)
   - ダッシュボードの自動更新は 2 分間隔で、タブが表示されている間だけ
@@ -132,3 +136,4 @@ Amazon Lightsail への手順は [docs/deploy-lightsail.md](docs/deploy-lightsai
 - [x] 温湿度の履歴グラフ
 - [x] タイルの並び替え・表示/非表示
 - [x] Lightsail へのデプロイ構成 (Docker Compose、Caddy による HTTPS)
+- [x] 自宅 Windows サーバーへのデプロイ構成 (Docker Compose、Cloudflare Tunnel)

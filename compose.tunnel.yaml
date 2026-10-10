@@ -1,0 +1,52 @@
+# 自宅の Windows サーバー (Docker Desktop) + Cloudflare Tunnel での本番構成
+#   migrate:     起動時に DB マイグレーションを適用して終了
+#   app:         Next.js アプリ (SQLite は sasuke-data ボリュームに保存)
+#   cloudflared: Cloudflare へ外向きに接続し、届いたリクエストを app に中継する
+# ルーターのポート開放は不要 (HTTPS は Cloudflare 側で終端される)
+# 使い方: docker compose -f compose.tunnel.yaml up -d --build
+# 手順は docs/deploy-windows-tunnel.md を参照
+
+# ボリューム名を sasuke_sasuke-data に固定する (クローン先のフォルダ名に左右されないように)
+name: sasuke
+
+services:
+  migrate:
+    build:
+      context: .
+      target: migrate
+    env_file: .env.production
+    environment:
+      DATABASE_URL: file:/data/sasuke.db
+    volumes:
+      - sasuke-data:/data
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runner
+    env_file: .env.production
+    environment:
+      DATABASE_URL: file:/data/sasuke.db
+      # Cloudflare が付与するアクセス元 IP (ログイン試行の回数制限に使う)。
+      # app はポートを公開せず cloudflared 経由でしか届かないため、このヘッダーは信頼できる
+      TRUSTED_IP_HEADER: cf-connecting-ip
+    volumes:
+      - sasuke-data:/data
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    # トークンは .env.production の TUNNEL_TOKEN から読み込まれる
+    command: tunnel --no-autoupdate run
+    env_file: .env.production
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  sasuke-data:

@@ -14,6 +14,15 @@ export const isSignupAllowed =
     ? process.env.ALLOW_SIGNUP === "true"
     : process.env.NODE_ENV !== "production";
 
+/**
+ * ログイン試行の回数制限に使う、アクセス元 IP を示すヘッダー (カンマ区切りで複数可)。
+ * Cloudflare Tunnel 経由では "cf-connecting-ip" を指定する。未指定なら X-Forwarded-For (Caddy 経由向け)。
+ * アプリへ直接アクセスできる構成で指定すると偽装できてしまうので、必ずプロキシ経由の構成でのみ使うこと。
+ */
+const ipAddressHeaders = process.env.TRUSTED_IP_HEADER?.split(",")
+  .map((header) => header.trim().toLowerCase())
+  .filter(Boolean);
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: "sqlite" }),
   emailAndPassword: {
@@ -21,6 +30,7 @@ export const auth = betterAuth({
     minPasswordLength: 8,
     disableSignUp: !isSignupAllowed,
   },
+  advanced: ipAddressHeaders?.length ? { ipAddress: { ipAddressHeaders } } : undefined,
   // Server Action からサインインした際に Set-Cookie を反映させる
   plugins: [nextCookies()],
 });
