@@ -1,11 +1,14 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
-import { AuthForm } from "@/components/auth-form";
-import { isSignupAllowed } from "@/lib/auth";
+import { SignupForm } from "@/components/auth-form";
+import { getSession, isSignupAllowed } from "@/lib/auth";
 
 export default async function SignupPage() {
   // ALLOW_SIGNUP をビルド時ではなく実行時に読むため動的レンダリングにする
   await connection();
+  // ログイン中にパスキーを作ると、新規アカウントではなく今のアカウントへの追加になってしまうため
+  if (await getSession()) redirect("/dashboard");
 
   if (!isSignupAllowed) {
     return (
@@ -20,5 +23,5 @@ export default async function SignupPage() {
       </main>
     );
   }
-  return <AuthForm mode="signup" allowSignup />;
+  return <SignupForm />;
 }

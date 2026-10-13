@@ -1,7 +1,10 @@
+import { getAuthenticatorName } from "@better-auth/passkey";
 import { getSession } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { hasCredentials, isMockMode } from "@/lib/switchbot/credentials";
 import { canUseWebhook, isWebhookEnabled } from "@/lib/switchbot/webhook";
-import { deleteCredentialsAction, disableWebhookAction } from "./actions";
+import { deleteCredentialsAction, deletePasskeyAction, disableWebhookAction } from "./actions";
+import { PasskeyAddButton } from "./passkey-add-button";
 import { CredentialForm } from "./credential-form";
 import { WebhookEnableForm } from "./webhook-form";
 
@@ -9,6 +12,9 @@ export default async function SettingsPage() {
   const session = await getSession();
   const registered = session ? await hasCredentials(session.user.id) : false;
   const webhookEnabled = session && registered ? await isWebhookEnabled(session.user.id) : false;
+  const passkeys = session
+    ? await prisma.passkey.findMany({ where: { userId: session.user.id }, orderBy: { createdAt: "asc" } })
+    : [];
 
   return (
     <div className="max-w-xl space-y-8">
@@ -69,9 +75,48 @@ export default async function SettingsPage() {
           )}
         </section>
       )}
+
+      <section className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold">パスキー</h2>
+          <StatusBadge on={passkeys.length > 0} onLabel={`${passkeys.length} 件`} offLabel="未登録" />
+        </div>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          ログインに使うパスキーです。端末をなくしてもログインできるよう、別の端末 (スマホと PC など)
+          のパスキーも追加しておくことをおすすめします。
+        </p>
+
+        {passkeys.length > 0 && (
+          <ul className="divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
+            {passkeys.map((passkey) => (
+              <li key={passkey.id} className="flex items-center justify-between gap-4 py-2">
+                <div>
+                  <p>{passkey.name || getAuthenticatorName(passkey.aaguid) || "パスキー"}</p>
+                  <p className="text-xs text-zinc-500">
+                    {passkey.createdAt ? `${dateFormat.format(passkey.createdAt)} に登録` : "登録日不明"}
+                    {passkey.backedUp && " ・ 端末間で同期"}
+                  </p>
+                </div>
+                {passkeys.length > 1 && (
+                  <form action={deletePasskeyAction}>
+                    <input type="hidden" name="id" value={passkey.id} />
+                    <button type="submit" className="text-sm whitespace-nowrap text-red-600 hover:underline">
+                      削除
+                    </button>
+                  </form>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <PasskeyAddButton />
+      </section>
     </div>
   );
 }
+
+const dateFormat = new Intl.DateTimeFormat("ja-JP", { dateStyle: "medium", timeZone: "Asia/Tokyo" });
 
 function StatusBadge({ on, onLabel, offLabel }: { on: boolean; onLabel: string; offLabel: string }) {
   return (

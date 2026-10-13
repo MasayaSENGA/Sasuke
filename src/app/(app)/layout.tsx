@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/sign-out-button";
 import { getSession } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 
 // ログインが必要なページの共通レイアウト。
 // proxy.ts はクッキーの有無だけを見る楽観的チェックなので、ここで必ずセッションを検証する。
@@ -10,6 +11,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   if (!session) {
     redirect("/login");
   }
+  // パスワードで作った旧アカウントには、パスキーの登録を促す
+  const hasPasskey = (await prisma.passkey.count({ where: { userId: session.user.id } })) > 0;
 
   return (
     <div className="flex flex-1 flex-col">
@@ -36,6 +39,15 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           </div>
         </div>
       </header>
+      {!hasPasskey && (
+        <div className="bg-amber-50 text-sm text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">
+          <p className="mx-auto w-full max-w-6xl px-4 py-2">
+            パスキーが未登録です。パスワードでのログインは移行期間のみ使えるため、
+            <Link href="/settings" className="underline">設定画面</Link>
+            でパスキーを登録してください。
+          </p>
+        </div>
+      )}
       <main className="mx-auto w-full max-w-6xl flex-1 p-4 sm:p-6">{children}</main>
     </div>
   );

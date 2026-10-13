@@ -1,9 +1,11 @@
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
-import { AuthForm } from "@/components/auth-form";
-import { isSignupAllowed } from "@/lib/auth";
+import { LoginForm } from "@/components/auth-form";
+import { getSession, isPasswordLoginAllowed, isSignupAllowed } from "@/lib/auth";
 
 export default async function LoginPage() {
-  // ALLOW_SIGNUP をビルド時ではなく実行時に読むため動的レンダリングにする
+  // ALLOW_SIGNUP などをビルド時ではなく実行時に読むため動的レンダリングにする
   await connection();
-  return <AuthForm mode="login" allowSignup={isSignupAllowed} />;
+  if (await getSession()) redirect("/dashboard");
+  return <LoginForm allowSignup={isSignupAllowed} allowPasswordLogin={isPasswordLoginAllowed} />;
 }

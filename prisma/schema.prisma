@@ -1,5 +1,5 @@
 // Prisma schema
-// 認証系テーブル (User / Session / Account / Verification) は Better Auth のコアスキーマに準拠。
+// 認証系テーブル (User / Session / Account / Verification / Passkey) は Better Auth のスキーマに準拠。
 
 generator client {
   provider = "prisma-client"
@@ -20,6 +20,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+  passkeys      Passkey[]
 
   switchBotCredential SwitchBotCredential?
   devicePreferences   DevicePreference[]
@@ -73,6 +74,26 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+// パスキー (WebAuthn の公開鍵)。Better Auth の passkey プラグインのスキーマに準拠
+model Passkey {
+  id           String    @id
+  name         String?
+  publicKey    String
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialID String
+  counter      Int
+  deviceType   String
+  backedUp     Boolean
+  transports   String?
+  createdAt    DateTime?
+  aaguid       String?
+
+  @@index([userId])
+  @@index([credentialID])
+  @@map("passkey")
 }
 
 // ユーザーごとの SwitchBot API 認証情報 (トークン/シークレットは AES-256-GCM で暗号化して保存)

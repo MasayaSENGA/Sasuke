@@ -122,7 +122,7 @@ docker compose -f compose.tunnel.yaml logs -f cloudflared   # "Registered tunnel
 
 Cloudflare の Tunnels 画面でも、トンネルの状態が **HEALTHY** になる。
 
-`https://{ホスト名}` を開き、アカウントを作成 → 設定画面で SwitchBot のトークンを登録する。
+`https://{ホスト名}` を開き、アカウントを作成 (パスキーを作成) → 設定画面で SwitchBot のトークンを登録する。パスキーについては [passkey.md](passkey.md) を参照。
 
 リアルタイム更新を使う場合は、設定画面の「リアルタイム更新 (Webhook)」で有効化する。
 
@@ -178,6 +178,7 @@ docker compose -f compose.tunnel.yaml start app
 5. 手順 4 で起動し、ログインできること・ダッシュボードが表示されることを確認する
 6. Webhook はドメインが同じなら登録し直す必要はない (URL も秘密文字列も DB ごと引き継がれる)。リアルタイム更新が届くことだけ確認する
    - ドメインを変える場合は、移行前に Lightsail 側の設定画面で Webhook を無効にし、移行後に新しい環境で有効にし直す
+   - ドメインを変えるとパスキーも使えなくなる。[passkey.md](passkey.md) の「すべてのパスキーを失ったとき」の手順で登録し直す
 7. 問題なければ Lightsail のインスタンスを停止し、しばらく様子を見てから削除する (静的 IP も解放する。アタッチされていない静的 IP は課金される)
 
 ## (任意) Cloudflare Access でさらに守る

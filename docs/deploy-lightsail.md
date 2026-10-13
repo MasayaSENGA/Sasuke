@@ -119,7 +119,7 @@ docker compose ps          # app が healthy、migrate が exited (0) になっ�
 docker compose logs -f app # ログ確認 (Ctrl+C で抜ける)
 ```
 
-`https://{DOMAIN}` を開き、アカウントを作成 → 設定画面で SwitchBot のトークンを登録する。
+`https://{DOMAIN}` を開き、アカウントを作成 (パスキーを作成) → 設定画面で SwitchBot のトークンを登録する。パスキーについては [passkey.md](passkey.md) を参照。
 
 リアルタイム更新を使う場合は、設定画面の「リアルタイム更新 (Webhook)」で有効化する。
 

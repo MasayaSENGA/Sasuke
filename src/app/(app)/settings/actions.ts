@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { SwitchBotApiError, SwitchBotClient } from "@/lib/switchbot/client";
 import {
   deleteCredentials,
@@ -114,6 +115,16 @@ export async function disableWebhookAction() {
     await disableWebhook(userId, await getSwitchBotClient(userId));
   } catch (error) {
     console.error("Webhook の解除に失敗しました", error);
+  }
+  redirect("/settings");
+}
+
+export async function deletePasskeyAction(formData: FormData) {
+  const userId = await requireUserId();
+  // 最後の 1 つを消すとログインできなくなるため、2 つ以上あるときだけ削除できる
+  const count = await prisma.passkey.count({ where: { userId } });
+  if (count > 1) {
+    await prisma.passkey.deleteMany({ where: { id: String(formData.get("id")), userId } });
   }
   redirect("/settings");
 }

@@ -9,7 +9,7 @@ SwitchBot API を使った家電ダッシュボード Web アプリ。
 | --- | --- |
 | フレームワーク | Next.js 16 (App Router) / React 19 / TypeScript |
 | スタイル | Tailwind CSS v4 |
-| 認証 | Better Auth (メールアドレス + パスワード) |
+| 認証 | Better Auth (パスキー / WebAuthn、`@better-auth/passkey`) |
 | DB | Prisma 7 + SQLite (`@prisma/adapter-better-sqlite3`) |
 | 外部 API | SwitchBot Open API v1.1 |
 | 運用 | Docker Compose。自宅 Windows + Cloudflare Tunnel、または Amazon Lightsail + Caddy (HTTPS) |
@@ -83,6 +83,7 @@ src/
 | Amazon Lightsail + Caddy | `compose.yaml` | [docs/deploy-lightsail.md](docs/deploy-lightsail.md) |
 
 - 本番では新規アカウント作成が既定で無効。最初のアカウントを作るときだけ `ALLOW_SIGNUP=true` にする
+- ログインはパスキー。旧アカウントの移行・パスキーを失ったときの復旧は [docs/passkey.md](docs/passkey.md) を参照
 - `GET /api/health` で死活確認できる (DB 接続も確認)
 
 ## 開発用モックモード
