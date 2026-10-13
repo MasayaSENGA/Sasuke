@@ -68,8 +68,8 @@ Docker Desktop は **Windows にサインインしている間だけ** 動く。
 | Subdomain | 例: `sasuke` |
 | Domain | Cloudflare で管理しているドメイン |
 | Path | 空欄 |
-| Service Type | **HTTP** |
-| URL | **`app:3000`** (compose 内のサービス名。`localhost` ではない) |
+| Service Type | **HTTP** (この欄がない画面では不要) |
+| URL | **`http://app:3000`** (compose 内のサービス名。`localhost` ではない)。Service Type の欄が別にある画面では `app:3000` |
 
 保存すると、そのホスト名の DNS レコード (CNAME → `<トンネルID>.cfargotunnel.com`) が自動で作られる。
 
@@ -194,7 +194,7 @@ Zero Trust → Access → Applications でホスト名を登録すると、ア�
 | 症状 | 確認すること |
 | --- | --- |
 | ページが開けない (Cloudflare のエラー 1033) | トンネルが接続されていない。`docker compose -f compose.tunnel.yaml logs cloudflared`、`TUNNEL_TOKEN` が正しいか |
-| Cloudflare の 502 / 503 エラー | トンネル設定の URL が `app:3000` (HTTP) になっているか。`docker compose -f compose.tunnel.yaml ps` で app が healthy か |
+| Cloudflare の 502 / 503 エラー | トンネル設定の URL が `http://app:3000` になっているか。`docker compose -f compose.tunnel.yaml ps` で app が healthy か |
 | ホスト名の追加時に「レコードが既に存在する」 | DNS 画面で同じ名前の A / CNAME レコードを削除してから追加し直す |
 | ログインできない / すぐログアウトされる | `BETTER_AUTH_URL` がブラウザで開いている URL と完全に一致しているか (`https://`、末尾スラッシュなし) |
 | SwitchBot のトークンが無効と言われる | `ENCRYPTION_KEY` を変更していないか。変更した場合は設定画面でトークンを登録し直す |
