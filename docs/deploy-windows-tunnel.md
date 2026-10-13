@@ -59,6 +59,8 @@ Docker Desktop は **Windows にサインインしている間だけ** 動く。
 2. コネクタの種類は **Cloudflared**、トンネル名は `sasuke` など任意
 3. 環境の選択で **Docker** を選ぶと `docker run cloudflare/cloudflared:latest tunnel --no-autoupdate run --token eyJ...` というコマンドが表示される
    - **`--token` の後ろの文字列 (eyJ で始まる長い値) だけ** を控える。コマンド自体は実行しない (compose で起動するため)
+   - この画面の「次へ」ボタンは、**コネクタ (cloudflared) が実際に接続するまで押せない**。トークンを控えたら画面はそのままにして手順 3・4 で起動し、Connectors 欄に接続が表示されてから押す
+   - 画面を閉じてしまった場合も、トンネルは作成済み。起動後に Tunnels 一覧でトンネルを選び、編集 (Configure) → **Public Hostname** (または Published application routes) タブから次の手順のホスト名を追加すればよい。トークンも同じ編集画面から再表示できる
 4. 次の画面で公開するホスト名 (Public hostname / Published application) を追加する
 
 | 項目 | 値 |
