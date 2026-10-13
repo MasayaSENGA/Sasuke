@@ -38,6 +38,11 @@ export function useDeviceCommand(
         if (optimistic && device.status) {
           onUpdate({ ...device, status: { ...device.status, ...optimistic } });
         }
+        // 赤外線リモコンは、サーバーに保存された「最後に送った設定」を反映する
+        const body = await res.json().catch(() => ({}));
+        if (body.remoteState) {
+          onUpdate({ ...device, remoteState: body.remoteState });
+        }
         // 赤外線リモコンはステータスを持たないので再取得しない
         if (!device.isInfrared && device.status) {
           setTimeout(async () => {

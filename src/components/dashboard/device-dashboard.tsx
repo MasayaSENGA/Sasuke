@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { saveLayoutAction } from "@/app/(app)/dashboard/actions";
-import type { DashboardDevice, DeviceKind } from "@/lib/switchbot/devices";
+import type { DashboardDevice, DeviceKind, RemoteState } from "@/lib/switchbot/devices";
 import type { DeviceStatus, Scene } from "@/lib/switchbot/types";
 import { DeviceTile } from "./device-tile";
 import { EditableTile } from "./editable-tile";
@@ -87,21 +87,24 @@ export function DeviceDashboard({
     };
   }, [refresh, editing, realtime]);
 
-  // Webhook で届いた状態変化をサーバーから受け取る (Server-Sent Events)
+  // Webhook で届いた状態変化や、別の端末からの赤外線リモコンの操作をサーバーから受け取る (Server-Sent Events)
   useEffect(() => {
     if (!realtime) return;
     const source = new EventSource("/api/events");
     source.onopen = () => setConnected(true);
     source.onerror = () => setConnected(false); // 自動で再接続される
     source.addEventListener("device", (e) => {
-      const { deviceId, status } = JSON.parse((e as MessageEvent<string>).data) as {
+      const { deviceId, status, remoteState } = JSON.parse((e as MessageEvent<string>).data) as {
         deviceId: string;
-        status: Partial<DeviceStatus>;
+        status?: Partial<DeviceStatus>;
+        remoteState?: RemoteState;
       };
       setDevices((prev) =>
-        prev.map((d) =>
-          d.id === deviceId && d.status ? { ...d, status: { ...d.status, ...status } } : d,
-        ),
+        prev.map((d) => {
+          if (d.id !== deviceId) return d;
+          if (remoteState) return { ...d, remoteState };
+          return status && d.status ? { ...d, status: { ...d.status, ...status } } : d;
+        }),
       );
       setUpdatedAt(new Date());
     });

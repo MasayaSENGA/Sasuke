@@ -1,14 +1,18 @@
 import "server-only";
 import { EventEmitter } from "node:events";
+import type { RemoteState } from "./devices";
 import type { DeviceStatus } from "./types";
 
-// Webhook で受け取った状態変化を、開いているダッシュボード (SSE 接続) へ配信する。
+// Webhook で受け取った状態変化や、赤外線リモコンへの操作結果を、開いているダッシュボード (SSE 接続) へ配信する。
 // ※ プロセス内のイベントなので、複数インスタンス構成にする場合は Redis Pub/Sub 等へ置き換えること。
 
 export type DeviceUpdateEvent = {
   type: "device";
   deviceId: string;
-  status: Partial<DeviceStatus>;
+  /** 物理デバイスの状態変化 (Webhook) */
+  status?: Partial<DeviceStatus>;
+  /** 赤外線リモコンで最後に送った設定 (別の端末からの操作を反映する) */
+  remoteState?: RemoteState;
 };
 
 const globalForEvents = globalThis as unknown as { switchBotEvents?: EventEmitter };

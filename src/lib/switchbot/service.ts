@@ -7,8 +7,17 @@ import {
   toDashboardDevice,
   toDashboardRemote,
   type DashboardDevice,
+  type RemoteState,
 } from "./devices";
+import { publish } from "./events";
 import { getDevicePreferences } from "./preferences";
+import {
+  getRemoteState,
+  getRemoteStates,
+  remoteStateFromCommand,
+  saveRemoteState,
+  type RemoteStatePatch,
+} from "./remote-state";
 import type { DeviceCommand, DeviceStatus, Scene, SwitchBotApi } from "./types";
 
 /** デバイス一覧はほぼ変わらないので長めにキャッシュ */
@@ -73,9 +82,10 @@ export async function loadDashboard(
   client: SwitchBotApi,
   { force = false } = {},
 ): Promise<DashboardDevice[]> {
-  const [devices, preferences] = await Promise.all([
+  const [devices, preferences, remoteStates] = await Promise.all([
     getDeviceList(userId, client),
     getDevicePreferences(userId),
+    getRemoteStates(userId),
   ]);
 
   // 並び順が未設定のデバイス (新しく追加したものなど) は末尾に API の順で並べる
@@ -83,7 +93,11 @@ export async function loadDashboard(
     .map((device, index) => {
       const preference = preferences.get(device.id);
       return {
-        device: { ...device, hidden: preference?.hidden ?? false },
+        device: {
+          ...device,
+          hidden: preference?.hidden ?? false,
+          ...(device.isInfrared ? { remoteState: remoteStates.get(device.id) ?? null } : {}),
+        },
         order: preference?.sortOrder ?? preferences.size + index,
       };
     })
@@ -111,17 +125,37 @@ export async function loadDevice(
 ): Promise<DashboardDevice | null> {
   const device = await findDevice(userId, client, deviceId);
   if (!device) return null;
+  if (device.isInfrared) return { ...device, remoteState: await getRemoteState(userId, device.id) };
   return withStatus(userId, client, device, force);
 }
 
+/**
+ * コマンドを送信する。赤外線リモコンなら送った内容から状態を保存し、保存後の設定を返す。
+ * (状態を取得できない赤外線リモコンでも、どの端末からでも同じ表示にするため)
+ */
 export async function sendDeviceCommand(
   userId: string,
   client: SwitchBotApi,
-  deviceId: string,
+  device: DashboardDevice,
   command: DeviceCommand,
-) {
-  await client.sendCommand(deviceId, command);
-  invalidate(statusKey(userId, deviceId));
+): Promise<RemoteState | null> {
+  await client.sendCommand(device.id, command);
+  invalidate(statusKey(userId, device.id));
+
+  const statePatch = device.isInfrared ? remoteStateFromCommand(command) : null;
+  if (!statePatch) return null;
+  return updateRemoteState(userId, device, statePatch);
+}
+
+/** 赤外線リモコンの設定を保存し、開いている他の画面にも配信する (電源 OFF 中のエアコンの設定変更は送信せずにこれだけ行う) */
+export async function updateRemoteState(
+  userId: string,
+  device: DashboardDevice,
+  statePatch: RemoteStatePatch,
+): Promise<RemoteState> {
+  const remoteState = await saveRemoteState(userId, device.id, statePatch);
+  publish(userId, { type: "device", deviceId: device.id, remoteState });
+  return remoteState;
 }
 
 // ---- シーン ----

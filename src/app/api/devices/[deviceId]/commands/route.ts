@@ -31,8 +31,9 @@ export async function POST(
     if (!device) {
       return NextResponse.json({ error: "デバイスが見つかりません" }, { status: 404 });
     }
-    await sendDeviceCommand(sb.userId, sb.client, deviceId, parsed.data);
-    return NextResponse.json({ ok: true });
+    // 赤外線リモコンなら保存した設定を返す (画面にすぐ反映するため)
+    const remoteState = await sendDeviceCommand(sb.userId, sb.client, device, parsed.data);
+    return NextResponse.json({ ok: true, remoteState });
   } catch (error) {
     return switchBotErrorResponse(error);
   }

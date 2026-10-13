@@ -24,6 +24,7 @@ model User {
 
   switchBotCredential SwitchBotCredential?
   devicePreferences   DevicePreference[]
+  remoteStates        RemoteState[]
   sensorReadings      SensorReading[]
 
   @@map("user")
@@ -125,6 +126,26 @@ model DevicePreference {
 
   @@unique([userId, deviceId])
   @@map("device_preference")
+}
+
+// 赤外線リモコンでこのアプリから最後に送った設定 (状態を取得できないため、全端末で共有できるようサーバーに保存する)
+model RemoteState {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId    String
+  /// "on" / "off"
+  power       String?
+  /// エアコンのみ: 設定温度 (℃)
+  temperature Int?
+  /// エアコンのみ: 1 自動 / 2 冷房 / 3 除湿 / 4 送風 / 5 暖房
+  mode        Int?
+  /// エアコンのみ: 1 自動 / 2 弱 / 3 中 / 4 強
+  fanSpeed    Int?
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, deviceId])
+  @@map("remote_state")
 }
 
 // 温湿度計の記録 (履歴グラフ用)

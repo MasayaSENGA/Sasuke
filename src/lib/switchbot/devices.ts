@@ -29,7 +29,29 @@ export type DashboardDevice = {
   statusError?: string;
   /** ダッシュボードで非表示にしているか (非表示のデバイスはステータスを取得しない) */
   hidden: boolean;
+  /** 赤外線リモコンのみ: このアプリから最後に送った設定 (未操作なら null) */
+  remoteState?: RemoteState | null;
 };
+
+/**
+ * 赤外線リモコンでこのアプリから最後に送った設定。
+ * 赤外線リモコンは状態を取得できないため、サーバーに保存してどの端末からでも同じ表示にする。
+ */
+export type RemoteState = {
+  power?: "on" | "off";
+  /** エアコンのみ: 設定温度 (℃) */
+  temperature?: number;
+  /** エアコンのみ: 1 自動 / 2 冷房 / 3 除湿 / 4 送風 / 5 暖房 */
+  mode?: number;
+  /** エアコンのみ: 1 自動 / 2 弱 / 3 中 / 4 強 */
+  fanSpeed?: number;
+  /** 最後に操作した日時 (ISO 8601) */
+  updatedAt: string;
+};
+
+/** エアコンの設定温度の範囲 (SwitchBot の setAll が受け付ける範囲) */
+export const AC_MIN_TEMP = 16;
+export const AC_MAX_TEMP = 30;
 
 const KIND_PATTERNS: [RegExp, DeviceKind][] = [
   [/meter|woiosensor|weather ?station|hub [23]|climate panel|thermostat/i, "climate"],

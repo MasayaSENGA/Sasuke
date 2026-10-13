@@ -5,7 +5,7 @@ import { useState, type ReactNode } from "react";
 import { getPowerState, type DashboardDevice, type DeviceKind } from "@/lib/switchbot/devices";
 import type { DeviceStatus } from "@/lib/switchbot/types";
 import { ActionButton } from "./action-button";
-import { AirConditionerControls } from "./air-conditioner-controls";
+import { AirConditionerControls, formatUpdatedAt } from "./air-conditioner-controls";
 import { useDeviceCommand, type SendCommand } from "./use-device-command";
 
 export const ICONS: Record<DeviceKind, string> = {
@@ -26,12 +26,14 @@ type TileProps = { device: DashboardDevice; onUpdate: (device: DashboardDevice) 
 export function DeviceTile({ device, onUpdate }: TileProps) {
   const { send, pending, error } = useDeviceCommand(device, onUpdate);
   const power = getPowerState(device.status);
+  // 赤外線リモコンは、最後に送った電源操作で枠の色を変える
+  const lit = power ?? device.remoteState?.power === "on";
   const canControl = device.cloudEnabled && !device.statusError;
 
   return (
     <article
       className={`flex flex-col gap-4 rounded-2xl border bg-white p-5 shadow-sm transition dark:bg-zinc-900 ${
-        power ? "border-amber-300 dark:border-amber-700" : "border-zinc-200 dark:border-zinc-800"
+        lit ? "border-amber-300 dark:border-amber-700" : "border-zinc-200 dark:border-zinc-800"
       }`}
     >
       <header className="flex items-start justify-between gap-3">
@@ -57,7 +59,7 @@ export function DeviceTile({ device, onUpdate }: TileProps) {
       ) : device.statusError ? (
         <Notice>{device.statusError}</Notice>
       ) : (
-        <TileBody device={device} send={send} pending={pending} />
+        <TileBody device={device} send={send} pending={pending} onUpdate={onUpdate} />
       )}
 
       {error && <p className="text-xs text-red-600">{error}</p>}
@@ -80,10 +82,12 @@ function TileBody({
   device,
   send,
   pending,
+  onUpdate,
 }: {
   device: DashboardDevice;
   send: SendCommand;
   pending: boolean;
+  onUpdate: (device: DashboardDevice) => void;
 }) {
   const status = device.status;
   switch (device.kind) {
@@ -102,7 +106,7 @@ function TileBody({
     case "sensor":
       return <SensorBody status={status} />;
     case "ir-ac":
-      return <AirConditionerControls deviceId={device.id} send={send} pending={pending} />;
+      return <AirConditionerControls device={device} send={send} pending={pending} onUpdate={onUpdate} />;
     case "ir":
       return <InfraredBody device={device} send={send} pending={pending} />;
     default:
@@ -314,8 +318,14 @@ function SensorBody({ status }: { status: DeviceStatus | null }) {
 
 function InfraredBody({ device, send, pending }: { device: DashboardDevice; send: SendCommand; pending: boolean }) {
   const isTv = /tv|streamer|set top box/i.test(device.type);
+  const last = device.remoteState;
   return (
     <div className="space-y-2">
+      {last?.power && (
+        <p className={`text-sm font-medium ${last.power === "on" ? "text-amber-600" : "text-zinc-400"}`}>
+          {last.power === "on" ? "電源 ON" : "電源 OFF"}
+        </p>
+      )}
       <div className="flex gap-2">
         <ActionButton onClick={() => send({ command: "turnOn" })} disabled={pending}>
           ON
@@ -332,7 +342,11 @@ function InfraredBody({ device, send, pending }: { device: DashboardDevice; send
           <ActionButton onClick={() => send({ command: "channelAdd" })} disabled={pending}>CH＋</ActionButton>
         </div>
       )}
-      <p className="text-xs text-zinc-500">赤外線リモコンは状態を取得できません</p>
+      <p className="text-xs text-zinc-500">
+        {last
+          ? `このアプリから最後に送った操作です (付属のリモコンでの操作は反映されません) ・ ${formatUpdatedAt(last.updatedAt)}`
+          : "赤外線リモコンは状態を取得できません"}
+      </p>
     </div>
   );
 }
